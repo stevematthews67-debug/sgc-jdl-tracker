@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SGC JDL Tracker (Supabase)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #020617; color: #ffffff; overscroll-behavior: none; }
+        .player-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+        .jersey-badge { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: 900; font-size: 0.8rem; }
+    </style>
+</head>
+<body class="p-3">
+
+    <header class="w-full max-w-2xl mx-auto py-4 px-4 flex items-center justify-center border-b-2 border-red-600 mb-6 bg-slate-900 rounded-b-[2rem] shadow-xl">
+        <div class="mr-3">
+            <svg width="48" height="48" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100" height="100" rx="20" fill="white"/>
+                <text x="50" y="65" font-family="Arial Black, sans-serif" font-size="30" fill="#ef4444" text-anchor="middle" font-weight="900">SGC</text>
+            </svg>
+        </div>
+        <div class="text-left">
+            <h1 class="text-xl font-black italic leading-none tracking-tighter text-white">JDL TRACKER</h1>
+            <p class="text-[8px] text-red-500 font-bold uppercase tracking-widest mt-1">Supabase Edition</p>
+        </div>
+    </header>
+
+    <main id="app-root" class="w-full max-w-2xl mx-auto">
+        <div id="status-msg" class="text-center py-12 text-slate-500 font-black text-[10px] uppercase tracking-widest animate-pulse">
+            Connecting to Supabase...
+        </div>
+    </main>
+
+    <footer class="mt-10 mb-10 text-center">
+        <div id="save-status" class="text-[9px] font-black uppercase tracking-widest text-slate-600 italic">Connected: spoyffavijhiujevikfu</div>
+    </footer>
+
+    <script>
+        const SUPABASE_URL = 'https://spoyffavijhiujevikfu.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwb3lmZmF2aWpoaXVqZXZpa2Z1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MDYyMjUsImV4cCI6MjA5MDE4MjIyNX0.niEXHS-IzNn6_VPfdWqXP2axCc5BBIOnjLYyRyN3tqo';
+        
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let rosters = { 'U9':[], 'U10':[], 'U11':[], 'U12':[] };
+        let currentAge = 'U9';
+
+        async function initApp() {
+            const statusEl = document.getElementById('status-msg');
+            
+            try {
+                const { data, error } = await supabase
+                    .from('rosters')
+                    .select('*');
+
+                if (error) throw error;
+
+                // Process table data into our rosters object
+                data.forEach(row => {
+                    if (row.age_group && row.players) {
+                        rosters[row.age_group] = row.players.split(',').map(s => s.trim()).filter(s => s);
+                    }
+                });
+
+                renderApp();
+            } catch (err) {
+                console.error(err);
+                statusEl.innerHTML = `<div class="text-red-500">Database Error: ${err.message}</div>`;
+            }
+        }
+
+        window.setAge = (age) => {
+            currentAge = age;
+            renderApp();
+        };
+
+        function renderApp() {
+            const root = document.getElementById('app-root');
+            const players = rosters[currentAge] || [];
+
+            root.innerHTML = `
+                <div class="flex bg-slate-800 rounded-xl overflow-hidden mb-6 border border-slate-700 shadow-lg">
+                    ${['U9','U10','U11','U12'].map(age => `
+                        <button onclick="setAge('${age}')" class="flex-1 py-4 text-[10px] font-black uppercase ${currentAge === age ? 'bg-red-600 text-white' : 'text-slate-500'}">
+                            ${age}
+                        </button>
+                    `).join('')}
+                </div>
+
+                <div class="bg-slate-900 p-5 rounded-[2rem] border-2 border-slate-800 mb-4 shadow-xl text-center">
+                    <h2 class="text-red-500 font-black uppercase text-[10px] tracking-widest mb-6">Current Roster (${currentAge})</h2>
+                    
+                    <div class="player-grid">
+                        ${players.map(p => {
+                            const parts = p.split(':');
+                            const jersey = parts[0] || '?';
+                            const name = parts[1] || parts[0];
+                            return `
+                                <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 flex flex-col items-center gap-2 shadow-sm">
+                                    <div class="jersey-badge bg-red-600 text-white shadow-lg">${jersey}</div>
+                                    <div class="text-[10px] font-black uppercase tracking-tight truncate w-full">${name}</div>
+                                </div>
+                            `;
+                        }).join('') || '<div class="col-span-full py-8 text-slate-600 text-[10px] font-black uppercase">No players added for this group.</div>'}
+                    </div>
+                </div>
+
+                <button class="w-full py-6 bg-lime-500 text-black font-black text-lg rounded-[2rem] uppercase shadow-lg shadow-lime-900/30 hover:bg-lime-400 transition-colors">
+                    Start Tracker
+                </button>
+            `;
+        }
+
+        // Boot the app
+        window.onload = initApp;
+    </script>
+</body>
+</html>
